@@ -1,0 +1,9 @@
+1. A -> D
+2. F,H -> G 
+3. B -> L
+4. D,J -> M 
+5. C,D -> F 
+6. A,E -> J
+7. B -> D
+fakty
+C,E,H,B
