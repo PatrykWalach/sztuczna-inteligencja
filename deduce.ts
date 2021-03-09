@@ -1,3 +1,16 @@
+/**
+ * Program wykonujący wnioskowanie.
+ *
+ * Program uruchomiony może być przy pomocy Deno,
+ * program wczytuje bazę wiedzy z pliku baza-wiedzy.txt
+ * i wykonuje wnioskowanie w tył na hipotezach podanych w argumentach lub A-H.
+ *
+ * @link   https://github.com/PatrykWalach/sztuczna-inteligencja
+ * @file   Ten plik jest plikiem głównym tego programu.
+ * @author Patryk Wałach.
+ * @since  09.03.2021
+ */
+
 const text = await Deno.readTextFile("baza-wiedzy.txt");
 
 const [initialRules, initialFacts] = text.split("fakty");
@@ -15,6 +28,9 @@ const rules = initialRules
       .map((str) => str.split(","))
   );
 
+/**
+ * Funkcja wykonuje wnioskowanie w przód.
+ */
 function deduce(hypothesis: string) {
   if (facts.has(hypothesis)) {
     return true;
@@ -41,7 +57,10 @@ function deduce(hypothesis: string) {
   return facts.has(hypothesis);
 }
 
-function deduceBackwards(hypothesis: string) {
+/**
+ * Funkcja wykonuje wnioskowanie w tył.
+ */
+function deduceRight(hypothesis: string) {
   if (facts.has(hypothesis)) {
     return true;
   }
@@ -50,8 +69,8 @@ function deduceBackwards(hypothesis: string) {
     if (!results.includes(hypothesis)) {
       continue;
     }
-    
-    if (requirements.every((r) => deduceBackwards(r))) {
+
+    if (requirements.every((r) => deduceRight(r))) {
       for (const result of results) {
         facts.add(result);
       }
@@ -63,5 +82,12 @@ function deduceBackwards(hypothesis: string) {
   return false;
 }
 
-console.log(deduceBackwards("D"));
-console.log(facts);
+for (const hypothesis of Deno.args.length
+  ? Deno.args
+  : Array.from({ length: 1 + "H".charCodeAt(0) - "A".charCodeAt(0) }, (_, i) =>
+      String.fromCharCode(i + "A".charCodeAt(0))
+    )) {
+  console.log(
+    `${hypothesis} ${deduceRight(hypothesis) ? "" : "nie "}jest spełnione`
+  );
+}
