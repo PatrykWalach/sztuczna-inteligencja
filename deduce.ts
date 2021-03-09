@@ -45,11 +45,13 @@ function deduce(hypothesis: string) {
         continue;
       }
 
-      if (requirements.every((r) => facts.has(r))) {
-        changed = true;
-        for (const result of results) {
-          facts.add(result);
-        }
+      if (requirements.some((r) => !facts.has(r))) {
+        continue;
+      }
+
+      changed = true;
+      for (const result of results) {
+        facts.add(result);
       }
     }
   }
@@ -70,13 +72,15 @@ function deduceRight(hypothesis: string) {
       continue;
     }
 
-    if (requirements.every((r) => deduceRight(r))) {
-      for (const result of results) {
-        facts.add(result);
-      }
-
-      return true;
+    if (requirements.some((r) => !deduceRight(r))) {
+      continue;
     }
+
+    for (const result of results) {
+      facts.add(result);
+    }
+
+    return true;
   }
 
   return false;
