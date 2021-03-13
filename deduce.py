@@ -3,6 +3,9 @@ import re
 text = open("baza-wiedzy.txt")
 
 initials = text.read().split("fakty")
+
+text.close()
+
 initialRules, initialFacts = (initials[0], initials[1])
 
 facts = set(s.strip() for s in initialFacts.split(','))
