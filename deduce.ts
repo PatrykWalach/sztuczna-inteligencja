@@ -86,11 +86,7 @@ function deduceRight(hypothesis: string) {
   return false;
 }
 
-for (const hypothesis of Deno.args.length
-  ? Deno.args
-  : Array.from({ length: 1 + "H".charCodeAt(0) - "A".charCodeAt(0) }, (_, i) =>
-      String.fromCharCode(i + "A".charCodeAt(0))
-    )) {
+for (const hypothesis of new Set(rules.flat(2).sort())) {
   console.log(
     `${hypothesis} ${deduceRight(hypothesis) ? "" : "nie "}jest spełnione`
   );
