@@ -6,10 +6,10 @@ initials = text.read().split("fakty")
 
 text.close()
 
-initialRules, initialFacts = (initials[0], initials[1])
+initialRules, initialFacts = tuple(initials)
 
 facts = set(s.strip() for s in initialFacts.split(','))
-rules = [tuple(s2.split(',') for s2 in re.sub(r'\d+\.', '', s.replace(" ", "")).split("->"))
+rules = [tuple(s2.split(',') for s2 in re.sub(r'\d+\.', '', s.replace("~~", "").replace(" ", "")).split("->"))
          for s in initialRules.split('\n') if s]
 
 
@@ -41,7 +41,7 @@ def deduceRight(hypothesis):
         if hypothesis not in results:
             continue
 
-        if any(not deduceRight(r) for r in requirements):
+        if any(not deduceRight(r.replace('~', '')) ^ r.startswith('~') for r in requirements):
             continue
 
         for result in results:
@@ -52,7 +52,7 @@ def deduceRight(hypothesis):
     return False
 
 
-for hypothesis in set(sum(list(sum(list(r), []) for r in rules), [])):
+for hypothesis in sorted(set(r.replace('~', '') for r in sum(list(sum(list(r), []) for r in rules), []))):
     if deduceRight(hypothesis):
         print(hypothesis, "jest spełnione")
     else:
