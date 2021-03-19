@@ -3,5 +3,5 @@
 3. A, D -> Z 
 4. ~X -> Z
 5. C, ~D -> W
-fakty
+Fakty:
 A, C

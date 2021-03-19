@@ -2,8 +2,7 @@ import re
 
 text = open("baza-wiedzy-negacja.txt")
 
-initials = text.read().split("fakty")
-
+initials = re.split(r"fakty.*?\n", text.read(), flags=re.IGNORECASE)
 text.close()
 
 initialRules, initialFacts = tuple(initials)
@@ -47,7 +46,7 @@ def deduce(hypothesis, facts):
 
 def deduceRight(hypothesis, facts):
     """Funkcja wykonuje wnioskowanie w tył."""
-    if check(hypothesis, facts):
+    if hypothesis in facts:
         return True
 
     for requirements, results in rules:
@@ -66,7 +65,7 @@ def deduceRight(hypothesis, facts):
 
 
 for hypothesis in sorted(set(r.replace('~', '') for r in sum(list(sum(list(r), []) for r in rules), []))):
-    if deduce(hypothesis, set(s.strip() for s in initialFacts.split(','))):
+    if deduceRight(hypothesis, set(s.strip() for s in initialFacts.split(','))):
         print(hypothesis, "jest spełnione")
     else:
         print(hypothesis, "nie jest spełnione")
