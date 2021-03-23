@@ -1,0 +1,4 @@
+Args:
+A,B,C,D,E
+Attacks:
+(C,A),(A,D),(A,B),(B,A),(B,E),(E,B)
