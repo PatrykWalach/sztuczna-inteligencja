@@ -1,36 +1,6 @@
+from itertools import combinations
 import re
 from queue import PriorityQueue
-
-
-def outLen(vertices: list, edges: list, fullfilled: list, d: int):
-    return len([a for a, i in zip(edges[d], range(len(vertices))) if a is True and fullfilled[i] is not True])
-
-
-def dung(vertices: list, edges: list, fullfilled: list):
-    visited = [False]*len(vertices)
-    queue = PriorityQueue()
-    for e in sorted([(outLen(vertices, edges, fullfilled, d), d)
-                     for d in range(len(vertices))]):
-        queue.put(e)
-
-    while(not queue.empty()):
-        w, d = queue.get()
-
-        if visited[d]:
-            continue
-
-        visited[d] = True
-
-        # if fullfilled[d] is not None:
-        #     continue
-
-        if any(fullfilled[a] for a in range(len(vertices)) if edges[d][a]):
-            fullfilled[d] = False
-        elif all(fullfilled[a] is False for a in range(len(vertices)) if edges[d][a]):
-            fullfilled[d] = True
-
-        for e in [a for a in range(len(vertices)) if edges[a][d]]:
-            queue.put((outLen(vertices, edges, fullfilled, e), e))
 
 
 class c:
@@ -40,71 +10,82 @@ class c:
     END = '\033[0;0m'
 
 
-def printVertices(vertices: list,  fullfilled: list,):
-    for v in range(len(vertices)):
-        if fullfilled[v] is True:
-            print(' · '+vertices[v] + f' is {c.GREEN}In{c.END}')
-        elif fullfilled[v] is False:
-            print(' · '+vertices[v] + f' is {c.ORANGE}Out{c.END}')
-        else:
-            print(' · '+vertices[v] + f' is {c.GRAY}Unknown{c.END}')
+def formatState(state: bool):
+    if state is True:
+        return 'In'
+    return 'Out'
 
 
-def resolveNither(vertices: list, edges: list, fullfilled: list, u: int):
-    fullfilled[u] = True
-    dung(vertices, edges,  fullfilled)
-    return fullfilled
-
-
-def trueLen(l: list):
-    return len([e for e in l if e is True])
+def colorState(state: str):
+    return state.replace('In', f'{c.GREEN}In{c.END}').replace('Out', f'{c.ORANGE}Out{c.END}')
 
 
 def allMax(l: list, **kargs):
-    return [n for n in l if n is max(l, key=kargs.get('key'))]
+    return [n for n in l if kargs.get('key')(n) is max(map(kargs.get('key'), l))]
 
 
 def allMin(l: list, **kargs):
-    return [n for n in l if n is min(l, key=kargs.get('key'))]
+    return [n for n in l if kargs.get('key')(n) is min(map(kargs.get('key'), l))]
 
 
-def main():
-    text = open("dung.txt")
+def isConflictFree(A: list, R: list):
+    return lambda s:  all(all(
+        not R[A.index(a)][A.index(b)] for b in s
+    ) for a in s)
 
-    initials = re.split(r"Attacks.*?\n", text.read(), flags=re.IGNORECASE)
-    text.close()
+
+def main(text: str):
+    initials = re.split(r"Attacks.*?\n", text, flags=re.IGNORECASE)
 
     initialArgs, initialAttacks = tuple(initials)
+    A = re.compile(r'Args.*?\n', re.IGNORECASE).sub('',
+                                                    initialArgs).replace('\n', '').replace(' ', '').split(',')
 
-    vertices = re.compile(r'Args.*?\n', re.IGNORECASE).sub('',
-                                                           initialArgs).strip().split(',')
+    R = [[False]*len(A) for a in A]
 
-    edges = [[False]*len(vertices) for v in vertices]
-
-    for attack in initialAttacks.split('),('):
+    for attack in initialAttacks.replace('\n', '').replace(' ', '').split('),('):
         a, d = tuple(attack.replace(")", '').replace('(', '').split(','))
-        edges[vertices.index(d)][vertices.index(a)] = True
+        R[A.index(d)][A.index(a)] = True
 
-    fullfilled = [None]*len(vertices)
+    subsets = sum(map(lambda r: list(
+        combinations(A, r)), range(1, len(A)+1)), [])
 
-    dung(vertices, edges, fullfilled)
-    print('Stable semantics:')
-    printVertices(vertices, fullfilled)
+    stableExtensions = list(filter(lambda s:  isConflictFree(A, R)(
+        s) and all(any(R[A.index(a)][A.index(b)] for b in s) for a in A if a not in s), subsets))
 
-    resolvedStates = [resolveNither(vertices, edges, fullfilled.copy(), v) for v in range(
-        len(vertices)) if fullfilled[v] is None]
+    formatRow = "{:>20}" + " {:>8}" * len(A)
 
-    print('Grounded semantics:')
-    for states, i in zip(allMin(resolvedStates, key=trueLen), range(len(resolvedStates))):
-        if i:
-            print('or:')
-        printVertices(vertices, states)
+    print(formatRow.format('', *A))
+    for stableExtension, i in zip(stableExtensions, range(len(stableExtensions))):
+        print(colorState(formatRow.format('or' if i else 'Stable semantics',
+                                          *[formatState(a in stableExtension) for a in A])))
 
-    print('Prefferred semantics:')
-    for states, i in zip(allMax(resolvedStates, key=trueLen), range(len(resolvedStates))):
-        if i:
-            print('or:')
-        printVertices(vertices, states)
+    for groundedExtension, i in zip(allMin(stableExtensions, key=len), range(len(stableExtensions))):
+        print(colorState(formatRow.format('or' if i else 'Grounded semantics',
+                                          *[formatState(a in groundedExtension) for a in A])))
+
+    for prefferredExtension, i in zip(allMax(stableExtensions, key=len), range(len(stableExtensions))):
+        print(colorState(formatRow.format('or' if i else 'Prefferred semantics',
+                                          *[formatState(a in prefferredExtension) for a in A])))
 
 
-main()
+with open("dung.txt") as f:
+    main(f.read())
+print("\n")
+main("""Args:
+A,B,C,D,E
+Attacks:
+(C,A),(A,D),(A,B),(B,A),(B,E),(E,B),(B,D)
+""")
+print("\n")
+main("""Args:
+A,B,C
+Attacks:
+(A,B),(B,C),(C,A)
+""")
+print("\n")
+main("""Args:
+A,B,C
+Attacks:
+(A,B),(B,C),(C,A),(B,A),(C,B),(A,C)
+""")
