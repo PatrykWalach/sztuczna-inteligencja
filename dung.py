@@ -71,21 +71,3 @@ def main(text: str):
 
 with open("dung.txt") as f:
     main(f.read())
-print("\n")
-main("""Args:
-A,B,C,D,E
-Attacks:
-(C,A),(A,D),(A,B),(B,A),(B,E),(E,B),(B,D)
-""")
-print("\n")
-main("""Args:
-A,B,C
-Attacks:
-(A,B),(B,C),(C,A)
-""")
-print("\n")
-main("""Args:
-A,B,C
-Attacks:
-(A,B),(B,C),(C,A),(B,A),(C,B),(A,C)
-""")
