@@ -20,18 +20,26 @@ def colorState(state: str):
     return state.replace('In', f'{c.GREEN}In{c.END}').replace('Out', f'{c.ORANGE}Out{c.END}')
 
 
-def allMax(l: list, **kargs):
-    return [n for n in l if kargs.get('key')(n) is max(map(kargs.get('key'), l))]
-
-
 def allMin(l: list, **kargs):
     return [n for n in l if kargs.get('key')(n) is min(map(kargs.get('key'), l))]
+
+
+def allMax(l: list, **kargs):
+    return [n for n in l if kargs.get('key')(n) is max(map(kargs.get('key'), l))]
 
 
 def isConflictFree(A: list, R: list):
     return lambda s:  all(all(
         not R[A.index(a)][A.index(b)] for b in s
     ) for a in s)
+
+
+def isAcceptable(A: list, R: list, E: list, a):
+    return all(any(R[A.index(b)][A.index(c)] for c in E) for b in A if R[A.index(a)][A.index(b)])
+
+
+def isAdmissible(A: list, R: list):
+    return lambda S: isConflictFree(A, R)(S) and all(isAcceptable(A, R, S, a) for a in S)
 
 
 def main(text: str):
@@ -50,23 +58,22 @@ def main(text: str):
     subsets = sum(map(lambda r: list(
         combinations(A, r)), range(1, len(A)+1)), [])
 
-    stableExtensions = list(filter(lambda s:  isConflictFree(A, R)(
-        s) and all(any(R[A.index(a)][A.index(b)] for b in s) for a in A if a not in s), subsets))
+    completeExtensions = list(
+        filter(lambda E: isAdmissible(A, R)(E) and all(a in E for a in A if isAcceptable(A, R, E, a)), subsets))
+
+    admissibleSets = list(filter(
+        isAdmissible(A, R), subsets))
 
     formatRow = "{:>20}" + " {:>8}" * len(A)
 
     print(formatRow.format('', *A))
-    for stableExtension, i in zip(stableExtensions, range(len(stableExtensions))):
-        print(colorState(formatRow.format('or' if i else 'Stable semantics',
-                                          *[formatState(a in stableExtension) for a in A])))
-
-    for groundedExtension, i in zip(allMin(stableExtensions, key=len), range(len(stableExtensions))):
-        print(colorState(formatRow.format('or' if i else 'Grounded semantics',
-                                          *[formatState(a in groundedExtension) for a in A])))
-
-    for prefferredExtension, i in zip(allMax(stableExtensions, key=len), range(len(stableExtensions))):
+    for prefferredExtension, i in zip(allMax(admissibleSets, key=len), range(len(admissibleSets))):
         print(colorState(formatRow.format('or' if i else 'Prefferred semantics',
                                           *[formatState(a in prefferredExtension) for a in A])))
+
+    for groundedExtension, i in zip(allMin(completeExtensions, key=len), range(len(completeExtensions))):
+        print(colorState(formatRow.format('or' if i else 'Grounded semantics',
+                                          *[formatState(a in groundedExtension) for a in A])))
 
 
 with open("dung.txt") as f:
