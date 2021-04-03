@@ -86,9 +86,17 @@ def main(text: str):
                 raise ValueError(
                     f'Not enough probabilities for event {v}\nPlease add "P({v}{"|"+",".join(parents) if len(parents) else ""})=n"')
 
-            # print(n.P)
-    for v in n.vertecies():
-        print(f'P({v})={n.query(v)}')
+    i = input(
+        f'Please input queries, for example: "P({v}{"|"+",".join(n.parents(v)) if len(n.parents(v)) else ""})="\n')
+    while(True):
+        m = re.match(r"P\(((~?\w+\|)?~?\w+(,~?\w+)*)\)=", i)
+        try:
+            if m == None:
+                raise ValueError('Bad query format')
+            print(n.stringQuery(m.group(1)))
+        except ValueError as e:
+            print(e)
+        i = input()
 
 
 if __name__ == '__main__':
