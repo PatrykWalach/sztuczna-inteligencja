@@ -1,25 +1,17 @@
 
 import random
-import traceback
-import queue
 import re
-import itertools
-import functools
+from itertools import product
+from functools import partial, reduce
 import operator
 
 
 class BayesianNetwork:
-    def __init__(self, *edgesOrVertices):
-        self.edges = [e for e in edgesOrVertices if isinstance(e, tuple)]
-
-        # self.edges = [*filter(functools.partial(
-        #     isinstance, class_or_tuple=tuple), edgesOrVertices)]
+    def __init__(self, *edges_or_vertices):
+        self.edges = [e for e in edges_or_vertices if isinstance(e, tuple)]
 
         self.vertices = set(sum([[*e] if isinstance(e, tuple) else [e]
-                                 for e in edgesOrVertices], []))
-
-        # self.vertices = set(*sum(map(list, self.edges), []), *filter(functools.partial(
-        #     isinstance, class_or_tuple=str), edgesOrVertices))
+                                 for e in edges_or_vertices], []))
 
         self.P = {
             e: {} for e in self.vertices
@@ -28,25 +20,25 @@ class BayesianNetwork:
     def parents(self, vertex: str):
         return [a for a, d in self.edges if d == vertex]
 
-    def stringQuery(self, logic: str):
-        parsedLogic = parseLogic(logic)
+    def string_query(self, logic: str):
+        parsed_logic = parse_logic(logic)
 
-        if parsedLogic[0] == '|':
-            return self.predict(dict(logicToEvent(parsedLogic)))/self.predict(dict(logicToEvent(parsedLogic[2])))
-        return self.predict(dict(logicToEvent(parsedLogic[2])))
+        if parsed_logic[0] == '|':
+            return self.predict(dict(logic_to_event(parsed_logic)))/self.predict(dict(logic_to_event(parsed_logic[2])))
+        return self.predict(dict(logic_to_event(parsed_logic)))
 
     def verify(self):
         for v in self.vertices:
-            for k in itertools.product([True, False], repeat=len(self.parents(v))):
+            for k in product([True, False], repeat=len(self.parents(v))):
                 if (*k, True) not in self.P[v]:
                     parents = [e if s else "~"+e for e,
                                s in zip(self.parents(v), k)]
                     raise ValueError(
                         f'Not enough probabilities for event {v}\nPlease add "P({v}{"|"+",".join(parents) if len(parents) else ""})=n"')
 
-    def probability(self, i, event):
-        k, s = i
-        if not s:
+    def probability(self, of: tuple[str, bool], event: dict):
+        k, value = of
+        if not value:
             return 1 - self.probability((k, True), event)
 
         if k not in self.P:
@@ -55,70 +47,63 @@ class BayesianNetwork:
         return self.P[k][(*[event[v] for v in self.parents(k)], True)]
 
     def predict(self,  event: dict):
-        """for event = { A: True, B: False }
-        returns P(A,~B)
+        """return P(A,~B) as float
+
+        from event = { 'A': True, 'B': False }
         """
 
-        missingVertices = set(self.vertices).difference(event.keys())
+        missing_vertices = set(self.vertices).difference(event.keys())
 
-        if len(missingVertices):
-            return sum(self.predict({
-                **event,
-                **dict(zip(missingVertices, values)),
-            })
-                for values in itertools.product([False, True],  repeat=len(missingVertices))
+        if len(missing_vertices):
+            return sum(
+                self.predict({
+                    **event,
+                    **dict(zip(missing_vertices, values)),
+                })
+                for values in product([False, True],  repeat=len(missing_vertices))
             )
 
-        probabilities = map(functools.partial(
+        probabilities = map(partial(
             self.probability, event=event), event.items())
 
-        return functools.reduce(operator.mul, probabilities, 1)
+        return reduce(operator.mul, probabilities, 1)
 
 
-def parseLogic(logic: str):
-    """returns logic H|~MA,GR
-    in ('|', 'H', (',', ('~', 'MA'), ('~', 'GR'))) format"""
+def parse_logic(logic: str):
+    """return ('|', 'H', (',', ('~', 'MA'), ('~', 'GR')))
+
+    from logic = 'H|~MA,GR'
+    """
     for i in range(len(logic)):
         if logic[i] in ['|', ',']:
-            return logic[i], parseLogic(logic[:i]), parseLogic(logic[i+1:])
+            return logic[i], parse_logic(logic[:i]), parse_logic(logic[i+1:])
 
     if logic[0] == '~':
-        return '~', parseLogic(logic[1:])
+        return '~', parse_logic(logic[1:])
 
     return logic
 
 
-def logicToEvent(logic: tuple) -> tuple:
-    """returns key (('H', True), ('MA', False), ('GR', False))
-    out of logic ('|', 'H', (',', ('~', 'MA'), ('~', 'GR')))"""
-    if logic[0] == '|':
-        return *logicToEvent(logic[1]), *logicToEvent(logic[2])
-    if logic[0] == ',':
-        return *logicToEvent(logic[1]), *logicToEvent(logic[2])
+def logic_to_event(logic: tuple) -> tuple:
+    """return (('H', True), ('MA', False), ('GR', False))
+
+    from logic ('|', 'H', (',', ('~', 'MA'), ('~', 'GR')))
+    """
+    if logic[0] in ['|', ',']:
+        return *logic_to_event(logic[1]), *logic_to_event(logic[2])
 
     if logic[0] == '~':
-        return ((k, not v) for k, v in logicToEvent(logic[1]))
+        return ((k, not v) for k, v in logic_to_event(logic[1]))
 
     return ((logic, True),)
 
 
-# def logicToQuery(logic: tuple) -> tuple:
-#     """returns key ('H', (('MA', False), ('GR', False)), True)
-#     out of logic ('|', 'H', (',', ('~', 'MA'), ('~', 'GR')))"""
-#     if logic[0] == '|':
-#         return dict(logicToQuery(logic[2])), *logicToQuery(logic[1])[0]
-#     if logic[0] == ',':
-#         return *logicToQuery(logic[1]), *logicToQuery(logic[2])
-
-#     if logic[0] == '~':
-#         return tuple((k, not v) for k, v in logicToQuery(logic[1]))
-
-#     return ((logic, True),)
-
-
-def parseEdges(conditionalDependencies: str):
+def parse_edges(conditional_dependencies: str):
     return [tuple(e.replace('(', '').replace(')', '').split(','))
-            for e in conditionalDependencies.replace('\n', '').split('),(')]
+            for e in conditional_dependencies.replace('\n', '').split('),(')]
+
+
+PROBABILITY_QUERY = r"P\(((?:~?\w+\|)?~?\w+(?:,~?\w+)*)\)="
 
 
 def main():
@@ -128,15 +113,16 @@ def main():
     initials = re.split(
         r"^[\w:]+?$", re.sub(r'\n+', '\n', text).replace(' ', ''), flags=re.MULTILINE)
 
-    _, initialVertices, conditionalDependencies, initialProbabilities = tuple(
+    _, initial_vertices, conditional_dependencies, initial_probabilities = tuple(
         initials)
-    edges = parseEdges(conditionalDependencies)
-    vertices = [v.strip() for v in initialVertices.split(',')]
+    edges = parse_edges(conditional_dependencies)
+    vertices = [v.strip() for v in initial_vertices.split(',')]
 
     n = BayesianNetwork(*edges, *vertices)
 
-    for initialProbability in initialProbabilities.strip().split('\n'):
-        m = re.match(r"P\((.+)\)=([\d\.]+)", initialProbability)
+    for initial_probability in initial_probabilities.strip().split('\n'):
+        m = re.match(
+            r"P\(((?:~?\w+\|)?~?\w+(?:,~?\w+)*)\)=([\d\.]+)", initial_probability)
         if m == None:
             continue
         exp, P = m.group(1), m.group(2)
@@ -146,53 +132,53 @@ def main():
             continue
 
         v, parents = tuple(m)
-        initialParents = tuple(parents.split(','))
-        parents = [parent.replace('~', '') for parent in initialParents]
+        initial_parents = tuple(parents.split(','))
+        parents = [parent.replace('~', '') for parent in initial_parents]
 
         for parent in parents:
             if parent not in n.parents(v):
                 raise ValueError(
-                    f'Invalid probability at line {str(text.index(exp))}: "{initialProbability}"\n"{v}" does not depend on "{parent}"')
+                    f'Incorrect probability at line {str(text.index(exp))}: "{initial_probability}"\n"{v}" does not depend on "{parent}"')
 
-        missingParents = set(n.parents(v)).difference(set(parents))
-        if len(missingParents):
+        missing_parents = set(n.parents(v)).difference(set(parents))
+        if len(missing_parents):
             raise ValueError(
-                f'Invalid probability at line {str(text.index(exp))}: "{initialProbability}"\n"{v}" also depends on "{missingParents}"')
+                f'Incorrect probability at line {str(text.index(exp))}: "{initial_probability}"\n"{v}" also depends on "{missing_parents}"')
 
-        n.P[v][tuple([*[any(parent == e for parent in initialParents)
+        n.P[v][tuple([*[any(parent == e for parent in initial_parents)
                         for e in n.parents(v)], True])] = float(P)
 
     n.verify()
-
-    # queries = ['H|~MA,~GR', 'L', 'H', 'MA', 'GR', 'H|MA,GR', 'H,MA,GR',
-    #            'G|MA,~GR', 'MA', 'D', 'H', 'GR']
-
-    # for query in queries:
-    #     print(f'P({query})={n.stringQuery(query)}')
 
     v = random.choice([*n.vertices])
 
     i = input(
         f'Please input queries, for example: "P({v}{"|"+",".join(n.parents(v)) if len(n.parents(v)) else ""})="\n')
     while(True):
-        m = re.match(r"P\(((~?\w+\|)?~?\w+(,~?\w+)*)\)=", i)
+        m = re.match(PROBABILITY_QUERY, i)
         try:
             if m == None:
-                raise ValueError('Bad query format')
-            print(n.stringQuery(m.group(1)))
+                raise ValueError('Incorrect query')
+            print(n.string_query(m.group(1)))
         except ValueError as e:
             print(e)
         i = input()
 
 
-# m = parseLogic('H|~MA,~GR')
-# print(m)
-# vertex = m[0] if len(m) < 2 else m[1]
-# print(vertex)
-# # parents = n.parents(vertex)
-# parents = ['GR', 'MA']
-# keys = logicToEvent(m)
-# print(tuple([k for _, k in sorted(
-#     keys, key=lambda t: [*parents, vertex].index(t[0]))]))
+def parse_query(n: BayesianNetwork, initial_probability: str):
+    m = re.match(
+        r"P\(((?:~?\w+\|)?~?\w+(?:,~?\w+)*)\)=([\d\.]+)", initial_probability)
+    if m == None:
+        raise ValueError('Incorrect probability at line')
+    exp, probability = m
+    l = parse_logic(exp)
+    vertex = l[0] if len(l) < 2 else l[1]
+    vertex = vertex if isinstance(vertex, str) else vertex[1]
+
+    keys = logic_to_event(l)
+
+    n.P[vertex][tuple([k for _, k in sorted(keys)])] = float(probability)
+
+
 if __name__ == '__main__':
     main()
