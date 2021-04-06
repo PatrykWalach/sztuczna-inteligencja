@@ -38,13 +38,14 @@ class BayesianNetwork:
 
     def probability(self, of: tuple[str, bool], event: dict):
         k, value = of
-        if not value:
-            return 1 - self.probability((k, True), event)
 
         if k not in self.P:
             raise ValueError(f'"{k}" not in the network')
 
-        return self.P[k][(*[event[v] for v in self.parents(k)], True)]
+        # if not value:
+        #     return 1 - self.probability((k, True), event)
+
+        return self.P[k][tuple(v for k, v in sorted([*filter(lambda i: i[0] in self.parents(k), event.items()), of]))]
 
     def predict(self,  event: dict):
         """return P(A,~B) as float
@@ -121,32 +122,7 @@ def main():
     n = BayesianNetwork(*edges, *vertices)
 
     for initial_probability in initial_probabilities.strip().split('\n'):
-        m = re.match(
-            r"P\(((?:~?\w+\|)?~?\w+(?:,~?\w+)*)\)=([\d\.]+)", initial_probability)
-        if m == None:
-            continue
-        exp, P = m.group(1), m.group(2)
-        m = exp.split('|')
-        if len(m) == 1:
-            n.P[m[0]][(True,)] = float(P)
-            continue
-
-        v, parents = tuple(m)
-        initial_parents = tuple(parents.split(','))
-        parents = [parent.replace('~', '') for parent in initial_parents]
-
-        for parent in parents:
-            if parent not in n.parents(v):
-                raise ValueError(
-                    f'Incorrect probability at line {str(text.index(exp))}: "{initial_probability}"\n"{v}" does not depend on "{parent}"')
-
-        missing_parents = set(n.parents(v)).difference(set(parents))
-        if len(missing_parents):
-            raise ValueError(
-                f'Incorrect probability at line {str(text.index(exp))}: "{initial_probability}"\n"{v}" also depends on "{missing_parents}"')
-
-        n.P[v][tuple([*[any(parent == e for parent in initial_parents)
-                        for e in n.parents(v)], True])] = float(P)
+        parse_probability(n, initial_probability)
 
     n.verify()
 
@@ -158,6 +134,8 @@ def main():
         m = re.match(PROBABILITY_QUERY, i)
         try:
             if m == None:
+                if re.match(PROBABILITY_QUERY[:-1],i):
+                    raise ValueError('Misssing "=" at the end of the query')
                 raise ValueError('Incorrect query')
             print(n.string_query(m.group(1)))
         except ValueError as e:
@@ -165,19 +143,45 @@ def main():
         i = input()
 
 
-def parse_query(n: BayesianNetwork, initial_probability: str):
+def parse_probability(n: BayesianNetwork, initial_probability: str):
     m = re.match(
         r"P\(((?:~?\w+\|)?~?\w+(?:,~?\w+)*)\)=([\d\.]+)", initial_probability)
     if m == None:
-        raise ValueError('Incorrect probability at line')
-    exp, probability = m
+        raise ValueError(f'Incorrect probability: "{initial_probability}"\n')
+    exp, probability = m.group(1), m.group(2)
     l = parse_logic(exp)
     vertex = l[0] if len(l) < 2 else l[1]
     vertex = vertex if isinstance(vertex, str) else vertex[1]
 
     keys = logic_to_event(l)
+    parents = n.parents(vertex)
+
+    duplicates = set()
+
+    for k, v in keys:
+        if k not in duplicates:
+            duplicates.add(k)
+            continue
+        raise ValueError(
+            f'Incorrect probability: "{initial_probability}"\nMultiple nodes "{k}"')
+
+    obsolete_parents = set([k for k, v in keys]).difference(
+        set([*parents, vertex]))
+
+    for obsolete_parent in obsolete_parents:
+        raise ValueError(
+            f'Incorrect probability: "{initial_probability}"\n"{vertex}" does not depend on "{obsolete_parent}"')
+
+    missing_parents = set(
+        [*parents, vertex]).difference(set([k for k, v in keys]))
+
+    for missing_parent in missing_parents:
+        raise ValueError(
+            f'Incorrect probability: "{initial_probability}"\n"{vertex}" also depends on "{missing_parents}"')
 
     n.P[vertex][tuple([k for _, k in sorted(keys)])] = float(probability)
+    n.P[vertex][tuple([k if v != vertex else not k for v,
+                       k in sorted(keys)])] = 1-float(probability)
 
 
 if __name__ == '__main__':
