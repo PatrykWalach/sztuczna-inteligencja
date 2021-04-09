@@ -134,7 +134,7 @@ def main():
         m = re.match(PROBABILITY_QUERY, i)
         try:
             if m == None:
-                if re.match(PROBABILITY_QUERY[:-1],i):
+                if re.match(PROBABILITY_QUERY[:-1], i):
                     raise ValueError('Misssing "=" at the end of the query')
                 raise ValueError('Incorrect query')
             print(n.string_query(m.group(1)))
@@ -145,7 +145,7 @@ def main():
 
 def parse_probability(n: BayesianNetwork, initial_probability: str):
     m = re.match(
-        r"P\(((?:~?\w+\|)?~?\w+(?:,~?\w+)*)\)=([\d\.]+)", initial_probability)
+        PROBABILITY_QUERY+r"([\d\.]+)", initial_probability)
     if m == None:
         raise ValueError(f'Incorrect probability: "{initial_probability}"\n')
     exp, probability = m.group(1), m.group(2)
