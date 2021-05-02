@@ -1,6 +1,7 @@
 
 import random
 import math
+import operator
 
 
 def default_activator(n: float):
@@ -34,7 +35,7 @@ class Perceptron:
         if(len(inputs) != self.inputs):
             raise ValueError('Bad inputs length.')
 
-        return self.activator(sum(i*w for i, w in zip(inputs, self.weights)))
+        return self.activator(sum(map(operator.mul, inputs, self.weights)))
 
     def train(self, inputs: list, target):
         if(len(inputs) != self.inputs):
