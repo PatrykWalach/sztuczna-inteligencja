@@ -36,7 +36,7 @@ class BayesianNetwork:
                     raise ValueError(
                         f'Not enough probabilities for event {v}\nPlease add "P({v}{"|"+",".join(parents) if len(parents) else ""})=n"')
 
-    def probability(self, of: tuple[str, bool], event: dict):
+    def probability(self, of: tuple, event: dict):
         k, value = of
 
         if k not in self.P:
@@ -91,10 +91,10 @@ def logic_to_event(logic: tuple) -> tuple:
     from logic ('|', 'H', (',', ('~', 'MA'), ('~', 'GR')))
     """
     if logic[0] in ['|', ',']:
-        return *logic_to_event(logic[1]), *logic_to_event(logic[2])
+        return sum((logic_to_event(logic[1]), logic_to_event(logic[2])), ())
 
     if logic[0] == '~':
-        return ((k, not v) for k, v in logic_to_event(logic[1]))
+        return tuple((k, not v) for k, v in logic_to_event(logic[1]))
 
     return ((logic, True),)
 
