@@ -12,7 +12,7 @@ from sklearn.model_selection import train_test_split
 from sklearn import metrics
 from sklearn.svm import SVC
 from sklearn.preprocessing import QuantileTransformer
-
+from sklearn.impute import SimpleImputer
 
 df = pd.read_csv('weather_madrid_LEMD_1997_2015.csv',
                  parse_dates=['CET'], index_col='CET')
@@ -24,16 +24,17 @@ def wynik(y_test, predictions):
     print(metrics.accuracy_score(y_test, predictions))
 
 
-cols = ['Max TemperatureC', 'Mean TemperatureC', 'Min TemperatureC', 'Dew PointC', 'MeanDew PointC', 'Min DewpointC', 'Max Humidity', ' Mean Humidity', ' Min Humidity', ' Max Sea Level PressurehPa', ' Mean Sea Level PressurehPa', ' Min Sea Level PressurehPa',
-        ' Max VisibilityKm', ' Mean VisibilityKm', ' Min VisibilitykM',
-        #  ' Max Gust SpeedKm/h', ' CloudCover',
-        ' Max Wind SpeedKm/h', ' Mean Wind SpeedKm/h', 'Precipitationmm', 'WindDirDegrees']
+cols = ['Max TemperatureC', 'Mean TemperatureC', 'Min TemperatureC', 'Dew PointC', 'MeanDew PointC', 'Min DewpointC', 'Max Humidity', ' Mean Humidity', ' Min Humidity', ' Max Sea Level PressurehPa', ' Mean Sea Level PressurehPa',
+        ' Min Sea Level PressurehPa',  ' Max VisibilityKm', ' Mean VisibilityKm', ' Min VisibilitykM', ' Max Gust SpeedKm/h',  ' CloudCover',     ' Max Wind SpeedKm/h', ' Mean Wind SpeedKm/h', 'Precipitationmm', 'WindDirDegrees']
 
 df[' Events'] = df[' Events'].fillna('None')
 
-df.ffill(axis=0, inplace=True)
+
+imp = SimpleImputer(add_indicator=True, strategy='constant', fill_value=0)
 
 X = df[cols]
+imp.fit(X)
+X = imp.transform(X)
 y = df[' Events']
 
 
@@ -41,7 +42,7 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.3, random_state=0)
 
 
-scaler = QuantileTransformer(output_distribution='normal', random_state=0)
+scaler = QuantileTransformer(random_state=0)
 scaler.fit(X_train)
 X_train_scaled = scaler.transform(X_train)
 X_test_scaled = scaler.transform(X_test)
