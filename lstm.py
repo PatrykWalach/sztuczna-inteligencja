@@ -80,7 +80,7 @@ embedding_layer = Embedding(embedding_matrix.shape[0],
 
 model = Sequential()
 model.add(embedding_layer)
-model.add(LSTM(128, dropout=0.3, recurrent_dropout=0.2))
+model.add(LSTM(128, dropout=0.4, recurrent_dropout=0.3))
 model.add(Dropout(0.2))
 model.add(Dense(20, input_dim=129, activation='relu', use_bias=True))
 model.add(Dense(2, use_bias=True))
