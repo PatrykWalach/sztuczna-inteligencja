@@ -35,10 +35,7 @@ df[' Events'] = df[' Events'].fillna('None')
 
 df = df.dropna()
 
-# imp = SimpleImputer(add_indicator=True, strategy='constant', fill_value=0)
 X = df[cols]
-# imp.fit(X)
-# X = imp.transform(X)
 y = df[' Events']
 
 
@@ -52,13 +49,6 @@ pca.fit(X_train)
 
 X_train = pca.transform(X_train)
 X_test = pca.transform(X_test)
-
-# scaler = QuantileTransformer(random_state=42)
-# scaler.fit(X_train)
-
-# X_train = scaler.transform(X_train)
-# X_test = scaler.transform(X_test)
-
 
 kmeans = KMeans(n_clusters=3, random_state=42, algorithm='full')
 pred_y = kmeans.fit(X_train)
